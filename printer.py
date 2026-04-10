@@ -1,5 +1,6 @@
 import subprocess
 import json
+from tkinter import messagebox
 
 import threading
 
@@ -14,7 +15,7 @@ def print_job(printer: str, file: str):
             file
         ], check=True)
     except Exception as e:
-        print("Error:", e)
+        messagebox.showerror("Error", f"{e}")
 
 def print_doc(path: str):
     data = None

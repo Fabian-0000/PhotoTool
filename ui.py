@@ -13,6 +13,7 @@ subprocess.Popen = hidden_popen
 import os
 import tkinter as tk
 from tkinter import messagebox, ttk
+from pynput import keyboard
 from pdf2image import convert_from_path
 from PIL import ImageTk
 import PIL
@@ -26,6 +27,34 @@ import photo
 import monitor_select
 import printer_settings
 import printer
+
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+class Clock():
+    def __init__(self):
+        self.restart()
+
+    def elapsed_time(self):
+        return time.time() - self.last_time
+    
+    def restart(self):
+        self.last_time = time.time()
+
+class WatchHandler(FileSystemEventHandler):
+    def __init__(self, app):
+        self.app = app
+        self.clock = Clock()
+
+    def on_any_event(self, event):
+        # ignore rapid duplicate events
+        if self.clock.elapsed_time() < 0.3:
+            return
+
+        self.clock.restart()
+        
+        # Schedule UI update safely
+        self.app.master.after(100, self.app.load_files)
 
 class AutoScrollbar(tk.Scrollbar):
     def set(self, lo, hi):
@@ -181,10 +210,6 @@ class MainApp:
         self.master.bind("<Control-w>", lambda e: self.fit_to_width())
         self.master.bind("<Control-h>", lambda e: self.fit_to_height())
 
-        self.master.bind("<F1>", lambda e: self.photo_print())
-        self.master.bind("<F2>", lambda e: self.photo_only())
-        self.master.bind("<F3>", lambda e: self.print_only())
-
         self.paned.add(self.frame_left, minsize=200)   # minimum width
         self.paned.add(self.frame_right, minsize=200)
 
@@ -202,6 +227,11 @@ class MainApp:
 
         self.pdf_image = None
         self.pdf_image_size = 297*3, 210*3
+
+        self.photo_clock = Clock()
+
+    def __del__(self):
+        self.stop_watcher()
 
     def load_pdf(self):
         selected = self.tree_files.selection()
@@ -250,16 +280,47 @@ class MainApp:
 
     # Function to list PDF files in a selected directory
     def load_files(self):
-        for item in self.tree_files.get_children():
-            self.tree_files.delete(item)
+        self.tree_files.unbind("<<TreeviewSelect>>")
+
+        selected = self.tree_files.selection()
+        last_selected = ""
+
+        if selected:
+            last_selected = self.tree_files.item(selected[0], "text")
+
+        self.tree_files.delete(*self.tree_files.get_children())
 
         for file in os.listdir('out/'):
             if file.lower().endswith('.pdf'):
                 self.tree_files.insert("", "end", text=file)
 
+        for item in self.tree_files.get_children():
+            if self.tree_files.item(item, "text") == last_selected:
+                self.tree_files.selection_set(item)
+                self.tree_files.focus(item)
+                break
+        else:
+            if hasattr(self, "canvas"):
+                self.canvas.delete("all")
+
+        self.tree_files.bind("<<TreeviewSelect>>", self.preview_pdf)
+
     # Function to preview selected PDF
     def preview_pdf(self, event = None):
+        selected = self.tree_files.selection()
+        if not selected:
+            return
+
+        file_name = self.tree_files.item(selected[0], "text")
+
+        if getattr(self, "_last_previewed", None) == file_name:
+            return
+
+        self._last_previewed = file_name
+
+        print('start')
         self.load_pdf()
+        print('end')
 
     def select_monitor(self):
         self.selected_rect = monitor_select.select_monitor(self.master)
@@ -269,7 +330,15 @@ class MainApp:
         self.photo_only()
         self.print_only()
 
-    def photo_only(self):
+    def photo_after(self):
+        self.load_files()
+
+        children = self.tree_files.get_children()
+        if children:
+            self.tree_files.selection_set(children[-1])
+            self.tree_files.focus(children[-1])
+
+    def photo_intern(self):
         rect = parser.extract_black_rectangle_rect("frame.pdf")
         screen_shot = photo.screen_shot(self.selected_rect)
 
@@ -277,17 +346,16 @@ class MainApp:
 
         photo.merge(rect, screen_shot, 'frame.pdf', os.path.join('out/', output_filename))
 
-        self.load_files()
+        self.master.after(0, self.photo_after)
 
-        children = self.tree_files.get_children()
-        if children:
-            self.tree_files.selection_set(children[-1])
-            self.tree_files.focus(children[-1])
-            self.preview_pdf()
+    def photo_only(self):
+        import threading
+        threading.Thread(target=self.photo_intern).start()
 
     def print_only(self):
         selected = self.tree_files.selection()
         if not selected:
+            messagebox.showerror("Error", f"No File is selected.")
             return
 
         file_name = self.tree_files.item(selected[0], "text")
@@ -379,7 +447,49 @@ class MainApp:
 
         self.render_pdf()
 
+    def on_press(self, key):
+        if self.photo_clock.elapsed_time() < 0.5:
+            return
+        
+        self.photo_clock.restart()
+
+        # schedule update on main thread
+        if key == keyboard.Key.f1:
+            self.master.after(0, self.photo_print)
+        elif key == keyboard.Key.f2:
+            self.master.after(0, self.photo_only)
+        elif key == keyboard.Key.f3:
+            self.master.after(0, self.print_only)
+
+    def start_watcher(self):
+        self.observer = Observer()
+        handler = WatchHandler(self)
+        self.observer.schedule(handler, path="out/", recursive=False)
+        self.observer.start()
+
+    def stop_watcher(self):
+        if hasattr(self, "observer"):
+            self.observer.stop()
+            self.observer.join()
+
+def apply_dark_theme(root):
+    from tkinter import ttk
+
+    style = ttk.Style()
+    style.theme_use("clam")
+
 def mainloop():
     root = tk.Tk()
+
+    apply_dark_theme(root)
+
     app = MainApp(root)
+
+    listener = keyboard.Listener(on_press=app.on_press)
+    listener.start()
+
+    app.start_watcher()
+
     root.mainloop()
+
+    listener.stop()

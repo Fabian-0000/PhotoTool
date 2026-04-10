@@ -30,7 +30,8 @@ class PrinterSettings:
         self.populate_listbox()
 
         self.root.bind("<Return>", lambda e: self.select_printer())
-
+        
+    @staticmethod
     def get_printers(self):
         # Returns a list of printer names
         return [printer[2] for printer in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)]
