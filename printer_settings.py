@@ -32,7 +32,7 @@ class PrinterSettings:
         self.root.bind("<Return>", lambda e: self.select_printer())
         
     @staticmethod
-    def get_printers(self):
+    def get_printers():
         # Returns a list of printer names
         return [printer[2] for printer in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)]
 
@@ -41,7 +41,7 @@ class PrinterSettings:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        printers = self.get_printers()
+        printers = PrinterSettings.get_printers()
         
         # Add printers
         for p in printers:
