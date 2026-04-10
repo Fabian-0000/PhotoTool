@@ -1,5 +1,8 @@
 # PhotoTool
 
+## Important
+This project is made for Windows and therefore only works there.
+
 ## Dependencies
 To install the required packages, run ```pip install -r requirements.txt``` or create a virtual environment. 
 <br>It includes pdf2image, Pillow, pypdf, screeninfo, pywin32, pynput and watchdog. Newer versions than listed in the file may work, but there is no guarantee. 
