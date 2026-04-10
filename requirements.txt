@@ -2,6 +2,5 @@ pdf2image==1.17.0
 Pillow==9.5.0
 pypdf==3.8.1
 screeninfo==0.8.1
-pywin32==310
 pynput==1.8.1
 watchdog==6.0.0
