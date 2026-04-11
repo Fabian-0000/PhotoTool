@@ -92,7 +92,7 @@ class MainApp:
             accelerator="F3"
         )
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=master.destroy)
+        file_menu.add_command(label="Exit", command=master.destroy, accelerator="Alt+F4")
 
         self.menu_bar.add_cascade(label=" File ", menu=file_menu)
 
@@ -318,12 +318,10 @@ class MainApp:
 
         self._last_previewed = file_name
 
-        print('start')
         self.load_pdf()
-        print('end')
 
     def select_monitor(self):
-        self.selected_rect = monitor_select.select_monitor(self.master)
+        monitor_select.select_monitor(self.master)
 
     # Button actions
     def photo_print(self):
@@ -349,6 +347,15 @@ class MainApp:
         self.master.after(0, self.photo_after)
 
     def photo_only(self):
+        try:
+            with open('settings.json', 'r') as file:
+                data = json.load(file)
+        
+            self.selected_rect = monitor_select.get_rect(data['monitor'])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open settings.json: {e}")
+            self.selected_rect = monitor_select.get_rect(0)
+
         import threading
         threading.Thread(target=self.photo_intern).start()
 
@@ -472,16 +479,11 @@ class MainApp:
             self.observer.stop()
             self.observer.join()
 
-def apply_dark_theme(root):
-    from tkinter import ttk
-
-    style = ttk.Style()
-    style.theme_use("clam")
-
 def mainloop():
     root = tk.Tk()
 
-    apply_dark_theme(root)
+    style = ttk.Style()
+    style.theme_use("clam")
 
     app = MainApp(root)
 
