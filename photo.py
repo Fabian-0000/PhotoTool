@@ -6,6 +6,12 @@ from ctypes import windll
 def screen_shot(rect: tuple):
     user32 = windll.user32
 
+    x, y, x2, y2 = rect
+    x2 += x
+    y2 += y
+
+    rect = x, y, x2, y2
+
     # take screen shot
     img = ImageGrab.grab(rect, all_screens=True)
     ImageGrab.grab()

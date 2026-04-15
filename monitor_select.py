@@ -27,7 +27,7 @@ class MonitorSelector:
 
             # Capture screenshot of monitor
             try:
-                img = ImageGrab.grab(bbox=(m.x, m.y, m.x + m.width, m.y + m.height))
+                img = ImageGrab.grab(bbox=(m.x, m.y, m.x + m.width, m.y + m.height), all_screens=True)
                 img = img.resize((w, h))
                 tk_img = ImageTk.PhotoImage(img)
                 self.images.append(tk_img)
