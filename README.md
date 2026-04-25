@@ -1,7 +1,7 @@
 # PhotoTool
 
 ## Important
-This project is made for Windows and therefore only works there.
+This project is made for **Windows** and therefore only works there. To edit the PDF it is recommended to do so in **Adobe Acrobat Reader DC**. The tool automatically detects where the black square is.
 
 ## Dependencies
 To install the required packages, run ```pip install -r requirements.txt``` or create a virtual environment.
